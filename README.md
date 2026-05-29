@@ -1,5 +1,5 @@
 # prActice-pralli
-im going to try make an  agent-based modelling thingy cause im bored
+I'm going to try to make an agent-based modelling thing because I'm bored.
 
 ## Tiny agent-based modelling demo
 
