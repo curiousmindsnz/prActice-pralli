@@ -3,7 +3,7 @@ im going to try make an  agent-based modelling thingy cause im bored
 
 ## Tiny agent-based modelling demo
 
-This repo now includes a small zero-dependency JavaScript simulation in `/tmp/workspace/curiousmindsnz/prActice-pralli/agent-based-modelling.js`.
+This repo now includes a small zero-dependency JavaScript simulation in `agent-based-modelling.js`.
 
 Run it with:
 
