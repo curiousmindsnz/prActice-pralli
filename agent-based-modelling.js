@@ -79,7 +79,6 @@ if (require.main === module) {
 }
 
 module.exports = {
-  Agent,
   World,
   simulate,
 };
