@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Town Agent-Based Modeller</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #1a1a2e;
+      color: #e0e0e0;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    header {
+      background: #16213e;
+      padding: 10px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 2px solid #0f3460;
+    }
+
+    header h1 { font-size: 1.2rem; color: #e94560; letter-spacing: 1px; }
+
+    .tick-display {
+      font-size: 0.85rem;
+      color: #a0aec0;
+    }
+
+    .main {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    /* ─── Left Panel ─── */
+    .panel {
+      width: 240px;
+      min-width: 200px;
+      background: #16213e;
+      border-right: 1px solid #0f3460;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      padding: 12px;
+      gap: 14px;
+    }
+
+    .panel h2 {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #718096;
+      border-bottom: 1px solid #0f3460;
+      padding-bottom: 4px;
+    }
+
+    .stat-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }
+
+    .stat-card {
+      background: #0f3460;
+      border-radius: 6px;
+      padding: 8px 10px;
+      text-align: center;
+    }
+
+    .stat-card .val {
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: #e94560;
+    }
+
+    .stat-card .lbl {
+      font-size: 0.65rem;
+      color: #a0aec0;
+      margin-top: 2px;
+    }
+
+    .agent-legend {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .legend-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.8rem;
+    }
+
+    .dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    label { font-size: 0.8rem; display: flex; flex-direction: column; gap: 3px; }
+
+    input[type=range] { width: 100%; accent-color: #e94560; }
+
+    .range-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.72rem;
+      color: #718096;
+    }
+
+    .btn-row {
+      display: flex;
+      gap: 8px;
+    }
+
+    button {
+      flex: 1;
+      padding: 7px 4px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.8rem;
+      font-weight: 600;
+      transition: opacity 0.15s;
+    }
+
+    button:hover { opacity: 0.85; }
+
+    #btnToggle { background: #e94560; color: #fff; }
+    #btnReset  { background: #0f3460; color: #e0e0e0; }
+    #btnEdit   { background: #2d6a4f; color: #fff; }
+    #btnEdit.active { background: #52b788; color: #1a1a2e; box-shadow: 0 0 0 2px #52b788; }
+
+    .brush-palette {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .brush-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 5px 8px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 0.78rem;
+      border: 2px solid transparent;
+      background: transparent;
+      color: #e0e0e0;
+      text-align: left;
+      transition: border-color 0.1s;
+    }
+
+    .brush-btn:hover { background: rgba(255,255,255,0.06); }
+
+    .brush-btn.selected { border-color: #e94560; background: rgba(233,69,96,0.12); }
+
+    .brush-swatch {
+      width: 16px;
+      height: 16px;
+      border-radius: 3px;
+      flex-shrink: 0;
+    }
+
+    canvas.edit-mode { cursor: crosshair; }
+
+    /* ─── Canvas area ─── */
+    .canvas-wrap {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #0d0d1a;
+      position: relative;
+      overflow: hidden;
+    }
+
+    canvas {
+      display: block;
+      border: 1px solid #0f3460;
+    }
+
+    /* ─── Right Panel ─── */
+    .right-panel {
+      width: 220px;
+      min-width: 180px;
+      background: #16213e;
+      border-left: 1px solid #0f3460;
+      display: flex;
+      flex-direction: column;
+      padding: 12px;
+      gap: 14px;
+      overflow-y: auto;
+    }
+
+    .right-panel h2 {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #718096;
+      border-bottom: 1px solid #0f3460;
+      padding-bottom: 4px;
+    }
+
+    .event-log {
+      flex: 1;
+      overflow-y: auto;
+      font-size: 0.72rem;
+      color: #a0aec0;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      max-height: 220px;
+    }
+
+    .event-log .entry { padding: 3px 5px; border-left: 2px solid #e94560; background: #0f3460; border-radius: 0 4px 4px 0; }
+
+    .zone-key {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .zone-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.78rem;
+    }
+
+    .zone-swatch {
+      width: 18px;
+      height: 18px;
+      border-radius: 3px;
+      flex-shrink: 0;
+      opacity: 0.6;
+    }
+
+    #agentInfoBox {
+      background: #0f3460;
+      border-radius: 6px;
+      padding: 8px;
+      font-size: 0.75rem;
+      line-height: 1.6;
+      min-height: 80px;
+      color: #cbd5e0;
+    }
+
+    #agentInfoBox span { color: #e94560; font-weight: 600; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Town Agent-Based Modeller</h1>
+  <div style="display:flex;align-items:center;gap:12px;">
+    <button id="btnEdit" title="Toggle map editor">✏ Edit Map</button>
+    <div class="tick-display">Tick: <strong id="tickCount">0</strong> &nbsp;|&nbsp; Speed: <strong id="speedLabel">1×</strong></div>
+  </div>
+</header>
+
+<div class="main">
+
+  <!-- LEFT PANEL -->
+  <div class="panel">
+    <h2>Town Stats</h2>
+    <div class="stat-grid">
+      <div class="stat-card"><div class="val" id="statPop">0</div><div class="lbl">Population</div></div>
+      <div class="stat-card"><div class="val" id="statWorking">0</div><div class="lbl">Working</div></div>
+      <div class="stat-card"><div class="val" id="statShopping">0</div><div class="lbl">Shopping</div></div>
+      <div class="stat-card"><div class="val" id="statHome">0</div><div class="lbl">At Home</div></div>
+      <div class="stat-card"><div class="val" id="statCommuting">0</div><div class="lbl">Commuting</div></div>
+      <div class="stat-card"><div class="val" id="statLeisure">0</div><div class="lbl">Leisure</div></div>
+    </div>
+
+    <h2>Legend</h2>
+    <div class="agent-legend">
+      <div class="legend-row"><div class="dot" style="background:#63b3ed"></div>Resident</div>
+      <div class="legend-row"><div class="dot" style="background:#f6ad55"></div>Worker</div>
+      <div class="legend-row"><div class="dot" style="background:#fc8181"></div>Shopper</div>
+      <div class="legend-row"><div class="dot" style="background:#68d391"></div>Leisure</div>
+      <div class="legend-row"><div class="dot" style="background:#b794f4"></div>Commuter</div>
+      <div class="legend-row"><div class="dot" style="background:#e94560"></div>Emergency</div>
+    </div>
+
+    <h2>Parameters</h2>
+    <label>
+      Population
+      <input type="range" id="paramPop" min="10" max="300" value="80" />
+      <div class="range-row"><span>10</span><span id="paramPopVal">80</span><span>300</span></div>
+    </label>
+    <label>
+      Work Rate
+      <input type="range" id="paramWork" min="0" max="100" value="60" />
+      <div class="range-row"><span>0%</span><span id="paramWorkVal">60%</span><span>100%</span></div>
+    </label>
+    <label>
+      Simulation Speed
+      <input type="range" id="paramSpeed" min="1" max="8" value="2" />
+      <div class="range-row"><span>1×</span><span id="paramSpeedVal">2×</span><span>8×</span></div>
+    </label>
+    <label>
+      Time of Day
+      <input type="range" id="paramTime" min="0" max="23" value="8" />
+      <div class="range-row"><span>00:00</span><span id="paramTimeVal">08:00</span><span>23:00</span></div>
+    </label>
+
+    <div class="btn-row">
+      <button id="btnToggle">▶ Run</button>
+      <button id="btnReset">↺ Reset</button>
+    </div>
+  </div>
+
+  <!-- CANVAS -->
+  <div class="canvas-wrap">
+    <canvas id="townCanvas"></canvas>
+  </div>
+
+  <!-- RIGHT PANEL -->
+  <div class="right-panel">
+    <h2>Zone Key / Brush</h2>
+    <div id="brushPalette" class="brush-palette">
+      <button class="brush-btn selected" data-zid="0"><div class="brush-swatch" style="background:#2d3748"></div>Road</button>
+      <button class="brush-btn" data-zid="1"><div class="brush-swatch" style="background:#2f4a2f"></div>Residential</button>
+      <button class="brush-btn" data-zid="2"><div class="brush-swatch" style="background:#3a2f4a"></div>Commercial</button>
+      <button class="brush-btn" data-zid="3"><div class="brush-swatch" style="background:#4a3a2f"></div>Industrial</button>
+      <button class="brush-btn" data-zid="4"><div class="brush-swatch" style="background:#1a3a2a"></div>Park</button>
+      <button class="brush-btn" data-zid="5"><div class="brush-swatch" style="background:#2a3a4a"></div>School</button>
+      <button class="brush-btn" data-zid="6"><div class="brush-swatch" style="background:#4a2f2f"></div>Hospital</button>
+      <button class="brush-btn" data-zid="7"><div class="brush-swatch" style="background:#1e3a5f"></div>Town Hall</button>
+    </div>
+    <div id="editHint" style="font-size:0.7rem;color:#718096;display:none;">Click ✏ Edit Map then paint tiles on the canvas.</div>
+
+    <h2>Selected Agent</h2>
+    <div id="agentInfoBox">Click an agent on the map to inspect it.</div>
+
+    <h2>Event Log</h2>
+    <div class="event-log" id="eventLog"></div>
+  </div>
+
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+//  TOWN AGENT-BASED MODELLER
+// ═══════════════════════════════════════════════════════
+
+const canvas = document.getElementById('townCanvas');
+const ctx = canvas.getContext('2d');
+
+// ─── Grid / tile config ───────────────────────────────
+const TILE = 20;   // px per tile
+const COLS = 40;
+const ROWS = 30;
+
+canvas.width  = COLS * TILE;
+canvas.height = ROWS * TILE;
+
+// ─── Zone types ───────────────────────────────────────
+const ZONE = {
+  ROAD:        { id: 0, color: '#2d3748', label: 'Road'       },
+  RESIDENTIAL: { id: 1, color: '#2f4a2f', label: 'Residential'},
+  COMMERCIAL:  { id: 2, color: '#3a2f4a', label: 'Commercial' },
+  INDUSTRIAL:  { id: 3, color: '#4a3a2f', label: 'Industrial' },
+  PARK:        { id: 4, color: '#1a3a2a', label: 'Park'       },
+  SCHOOL:      { id: 5, color: '#2a3a4a', label: 'School'     },
+  HOSPITAL:    { id: 6, color: '#4a2f2f', label: 'Hospital'   },
+  TOWNHALL:    { id: 7, color: '#1e3a5f', label: 'Town Hall'  },
+};
+
+// ─── Town map layout ─────────────────────────────────
+// 0=Road, 1=Res, 2=Com, 3=Ind, 4=Park, 5=School, 6=Hosp, 7=TownHall
+const RAW_MAP = [ // default / reference copy — do not mutate
+// liveMap is the mutable working copy (built below)
+  [3,3,3,3,3,3,3,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,7,7,7,7,0,5,5,5,5,0,0],
+  [3,3,3,3,3,3,3,3,0,1,1,1,1,0,1,1,1,1,0,1,1,1,1,0,1,1,1,1,0,7,7,7,7,0,5,5,5,5,0,0],
+  [3,3,3,3,3,3,3,3,0,1,1,1,1,0,1,1,1,1,0,1,1,1,1,0,1,1,1,1,0,7,7,7,7,0,5,5,5,5,0,0],
+  [3,3,3,3,3,3,3,3,0,1,1,1,1,0,1,1,1,1,0,1,1,1,1,0,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0],
+  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+  [0,6,6,6,6,0,2,2,2,2,0,2,2,2,2,0,2,2,2,2,0,2,2,2,2,0,1,1,1,1,0,1,1,1,1,0,1,1,1,0],
+  [0,6,6,6,6,0,2,2,2,2,0,2,2,2,2,0,2,2,2,2,0,2,2,2,2,0,1,1,1,1,0,1,1,1,1,0,1,1,1,0],
+  [0,6,6,6,6,0,2,2,2,2,0,2,2,2,2,0,2,2,2,2,0,2,2,2,2,0,1,1,1,1,0,1,1,1,1,0,1,1,1,0],
+  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+  [0,1,1,1,1,0,1,1,1,1,0,4,4,4,4,4,4,4,4,0,1,1,1,1,0,1,1,1,1,0,1,1,1,1,0,1,1,1,1,0],
+  [0,1,1,1,1,0,1,1,1,1,0,4,4,4,4,4,4,4,4,0,1,1,1,1,0,1,1,1,1,0,1,1,1,1,0,1,1,1,1,0],
+  [0,1,1,1,1,0,1,1,1,1,0,4,4,4,4,4,4,4,4,0,1,1,1,1,0,1,1,1,1,0,1,1,1,1,0,1,1,1,1,0],
+  [0,1,1,1,1,0,1,1,1,1,0,4,4,4,4,4,4,4,4,0,1,1,1,1,0,1,1,1,1,0,1,1,1,1,0,1,1,1,1,0],
+  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+  [0,2,2,2,2,0,2,2,2,2,0,2,2,2,2,0,2,2,2,2,0,2,2,2,2,0,1,1,1,1,0,1,1,1,1,0,4,4,4,0],
+  [0,2,2,2,2,0,2,2,2,2,0,2,2,2,2,0,2,2,2,2,0,2,2,2,2,0,1,1,1,1,0,1,1,1,1,0,4,4,4,0],
+  [0,2,2,2,2,0,2,2,2,2,0,2,2,2,2,0,2,2,2,2,0,2,2,2,2,0,1,1,1,1,0,1,1,1,1,0,4,4,4,0],
+  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+  [0,1,1,1,1,0,1,1,1,1,0,1,1,1,1,0,3,3,3,3,3,3,3,3,0,1,1,1,1,0,1,1,1,1,0,1,1,1,1,0],
+  [0,1,1,1,1,0,1,1,1,1,0,1,1,1,1,0,3,3,3,3,3,3,3,3,0,1,1,1,1,0,1,1,1,1,0,1,1,1,1,0],
+  [0,1,1,1,1,0,1,1,1,1,0,1,1,1,1,0,3,3,3,3,3,3,3,3,0,1,1,1,1,0,1,1,1,1,0,1,1,1,1,0],
+  [0,1,1,1,1,0,1,1,1,1,0,1,1,1,1,0,3,3,3,3,3,3,3,3,0,1,1,1,1,0,1,1,1,1,0,1,1,1,1,0],
+  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+  [0,5,5,5,5,0,2,2,2,2,0,2,2,2,2,0,2,2,2,2,0,2,2,2,2,0,1,1,1,1,0,1,1,1,1,0,1,1,1,0],
+  [0,5,5,5,5,0,2,2,2,2,0,2,2,2,2,0,2,2,2,2,0,2,2,2,2,0,1,1,1,1,0,1,1,1,1,0,1,1,1,0],
+  [0,5,5,5,5,0,2,2,2,2,0,2,2,2,2,0,2,2,2,2,0,2,2,2,2,0,1,1,1,1,0,1,1,1,1,0,1,1,1,0],
+  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+  [0,1,1,1,1,0,1,1,1,1,0,1,1,1,1,0,1,1,1,1,0,1,1,1,1,0,1,1,1,1,0,1,1,1,1,0,1,1,1,0],
+  [0,1,1,1,1,0,1,1,1,1,0,1,1,1,1,0,1,1,1,1,0,1,1,1,1,0,1,1,1,1,0,1,1,1,1,0,1,1,1,0],
+  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+];
+
+const ZONE_LIST = [ZONE.ROAD, ZONE.RESIDENTIAL, ZONE.COMMERCIAL, ZONE.INDUSTRIAL,
+                   ZONE.PARK, ZONE.SCHOOL, ZONE.HOSPITAL, ZONE.TOWNHALL];
+
+// ─── Mutable live map (deep copy of RAW_MAP) ─────────
+const liveMap = RAW_MAP.map(row => row.slice());
+
+// collect tile positions per zone — rebuilt whenever the map changes
+const zoneTiles = { 0:[], 1:[], 2:[], 3:[], 4:[], 5:[], 6:[], 7:[] };
+
+function rebuildZoneTiles() {
+  for (const k in zoneTiles) zoneTiles[k] = [];
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const z = liveMap[r][c];
+      zoneTiles[z].push({ x: c, y: r });
+    }
+  }
+}
+rebuildZoneTiles();
+
+// road tiles alias
+const roadTiles = zoneTiles[0];
+
+// ─── Agent state colours ──────────────────────────────
+const STATE_COLOR = {
+  home:      '#63b3ed',
+  work:      '#f6ad55',
+  shopping:  '#fc8181',
+  leisure:   '#68d391',
+  commuting: '#b794f4',
+  emergency: '#e94560',
+  school:    '#76e4f7',
+};
+
+// ─── Simulation state ─────────────────────────────────
+let agents = [];
+let tick = 0;
+let running = false;
+let simHour = 8;
+let simSpeed = 2;
+let population = 80;
+let workRate = 60;
+let selectedAgent = null;
+let animId = null;
+let lastFrame = 0;
+const MS_PER_TICK = 200;  // base tick duration
+let accumulator = 0;
+
+// ─── Logging ──────────────────────────────────────────
+const logEl = document.getElementById('eventLog');
+function log(msg) {
+  const d = document.createElement('div');
+  d.className = 'entry';
+  d.textContent = `[${String(simHour).padStart(2,'0')}:00] ${msg}`;
+  logEl.prepend(d);
+  if (logEl.childElementCount > 40) logEl.lastChild.remove();
+}
+
+// ─── Agent factory ────────────────────────────────────
+let nextId = 1;
+function createAgent(idx) {
+  const home = randomFrom(zoneTiles[1]) || randomFrom(roadTiles);
+  const job  = Math.random() * 100 < workRate
+    ? randomFrom(zoneTiles[2].concat(zoneTiles[3]))
+    : null;
+
+  const ages = ['child','adult','adult','adult','adult','elder'];
+  const age  = ages[Math.floor(Math.random() * ages.length)];
+  const name = randomName();
+
+  return {
+    id:     nextId++,
+    name,
+    age,
+    home,
+    job,
+    x:      home.x + 0.5,
+    y:      home.y + 0.5,
+    tx:     home.x + 0.5,   // target x
+    ty:     home.y + 0.5,   // target y
+    state:  'home',
+    income: Math.floor(Math.random() * 60 + 20) + 'k',
+    health: Math.floor(Math.random() * 40 + 60),
+    happiness: Math.floor(Math.random() * 40 + 50),
+    speed:  0.04 + Math.random() * 0.03,
+    color:  STATE_COLOR['home'],
+  };
+}
+
+function randomFrom(arr) {
+  if (!arr || !arr.length) return null;
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+const FIRST = ['Alex','Sam','Jordan','Taylor','Morgan','Riley','Quinn','Dana',
+  'Casey','Blake','Avery','Jamie','Drew','Skyler','Peyton','Reese',
+  'Charlie','Finley','Emery','Hayden','Logan','Rowan','Sage','Harper'];
+const LAST  = ['Smith','Jones','Brown','Taylor','Wilson','Evans','Thomas',
+  'Roberts','Walker','White','Lewis','Hall','Clark','Baker','Moore'];
+function randomName() {
+  return randomFrom(FIRST) + ' ' + randomFrom(LAST);
+}
+
+// ─── Initialise ───────────────────────────────────────
+function initSim() {
+  agents = [];
+  tick = 0;
+  simHour = parseInt(document.getElementById('paramTime').value);
+  population = parseInt(document.getElementById('paramPop').value);
+  workRate   = parseInt(document.getElementById('paramWork').value);
+  simSpeed   = parseInt(document.getElementById('paramSpeed').value);
+  selectedAgent = null;
+  document.getElementById('agentInfoBox').textContent = 'Click an agent on the map to inspect it.';
+
+  for (let i = 0; i < population; i++) agents.push(createAgent(i));
+  log(`Town initialised with ${population} residents.`);
+  updateStats();
+  renderFrame();
+}
+
+// ─── Behaviour / tick logic ───────────────────────────
+function tickSim() {
+  tick++;
+
+  // Advance simulated hour every 60 ticks
+  if (tick % 60 === 0) {
+    simHour = (simHour + 1) % 24;
+    document.getElementById('paramTime').value = simHour;
+    document.getElementById('paramTimeVal').textContent = String(simHour).padStart(2,'0') + ':00';
+    onHourChange();
+  }
+
+  agents.forEach(a => {
+    moveAgent(a);
+    // small chance random state re-evaluation each tick
+    if (Math.random() < 0.005) evaluateState(a);
+  });
+
+  updateStats();
+}
+
+function onHourChange() {
+  const h = simHour;
+  agents.forEach(a => {
+    // Morning rush: 7-9 → go to work/school
+    if (h === 7 || h === 8) {
+      if (a.job && a.age !== 'child')      setTarget(a, 'work',     a.job);
+      else if (a.age === 'child')           setTarget(a, 'school',   randomFrom(zoneTiles[5]) || a.home);
+      else                                  setTarget(a, 'leisure',  randomFrom(zoneTiles[4]) || a.home);
+    }
+    // Lunch: 12 → some go shopping
+    else if (h === 12 && Math.random() < 0.4) {
+      setTarget(a, 'shopping', randomFrom(zoneTiles[2]) || a.home);
+    }
+    // Evening: 17-18 → commute home
+    else if (h === 17 || h === 18) {
+      setTarget(a, 'commuting', a.home);
+    }
+    // Night: 19-21 → leisure or home
+    else if (h >= 19 && h <= 21 && Math.random() < 0.3) {
+      setTarget(a, 'leisure', randomFrom(zoneTiles[4]) || a.home);
+    }
+    // Late night: 22+ → home
+    else if (h >= 22 || h <= 5) {
+      setTarget(a, 'home', a.home);
+    }
+
+    // Random emergency
+    if (Math.random() < 0.002) {
+      const hosp = randomFrom(zoneTiles[6]);
+      if (hosp) {
+        setTarget(a, 'emergency', hosp);
+        log(`⚠ ${a.name} needs medical attention!`);
+      }
+    }
+  });
+}
+
+function setTarget(agent, state, tile) {
+  agent.state  = state;
+  agent.color  = STATE_COLOR[state] || '#ffffff';
+  agent.tx     = tile.x + 0.5;
+  agent.ty     = tile.y + 0.5;
+}
+
+function evaluateState(a) {
+  const h = simHour;
+  if (h >= 22 || h <= 5) setTarget(a, 'home', a.home);
+  else if (h >= 7 && h <= 9 && a.job) setTarget(a, 'work', a.job);
+}
+
+function moveAgent(a) {
+  const dx = a.tx - a.x;
+  const dy = a.ty - a.y;
+  const dist = Math.sqrt(dx*dx + dy*dy);
+  if (dist > 0.05) {
+    a.x += (dx / dist) * a.speed;
+    a.y += (dy / dist) * a.speed;
+  } else {
+    a.x = a.tx;
+    a.y = a.ty;
+    // arrived — if commuting home, switch to home state
+    if (a.state === 'commuting') {
+      a.state = 'home';
+      a.color = STATE_COLOR['home'];
+    }
+  }
+}
+
+// ─── Stats update ─────────────────────────────────────
+function updateStats() {
+  const counts = { home:0, work:0, shopping:0, commuting:0, leisure:0, emergency:0, school:0 };
+  agents.forEach(a => { counts[a.state] = (counts[a.state]||0) + 1; });
+
+  document.getElementById('statPop').textContent       = agents.length;
+  document.getElementById('statWorking').textContent   = counts.work || 0;
+  document.getElementById('statShopping').textContent  = counts.shopping || 0;
+  document.getElementById('statHome').textContent      = counts.home || 0;
+  document.getElementById('statCommuting').textContent = counts.commuting || 0;
+  document.getElementById('statLeisure').textContent   = (counts.leisure || 0) + (counts.school || 0);
+  document.getElementById('tickCount').textContent     = tick;
+}
+
+// ─── Rendering ────────────────────────────────────────
+function renderFrame() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  drawMap();
+  drawAgents();
+}
+
+function drawMap() {
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const zid = liveMap[r][c];
+      const zone = ZONE_LIST[zid];
+      ctx.fillStyle = zone.color;
+      ctx.fillRect(c * TILE, r * TILE, TILE, TILE);
+
+      // Subtle grid lines on non-road tiles
+      if (zid !== 0) {
+        ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+        ctx.lineWidth = 0.5;
+        ctx.strokeRect(c * TILE, r * TILE, TILE, TILE);
+      }
+    }
+  }
+
+  // Edit-mode hover highlight
+  if (editMode && hoverTile) {
+    ctx.fillStyle = 'rgba(255,255,255,0.18)';
+    ctx.fillRect(hoverTile.c * TILE, hoverTile.r * TILE, TILE, TILE);
+    // show selected brush colour tinted
+    ctx.fillStyle = ZONE_LIST[selectedBrush].color + 'aa';
+    ctx.fillRect(hoverTile.c * TILE, hoverTile.r * TILE, TILE, TILE);
+  }
+
+  // Zone labels (larger blocks only)
+  ctx.font = '7px Segoe UI';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  const drawn = new Set();
+  const LABELS = { 2:'COM', 3:'IND', 4:'PARK', 5:'SCH', 6:'HOSP', 7:'HALL' };
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const zid = liveMap[r][c];
+      if (LABELS[zid]) {
+        const key = `${zid}-${Math.floor(r/4)}-${Math.floor(c/5)}`;
+        if (!drawn.has(key)) {
+          drawn.add(key);
+          ctx.fillStyle = 'rgba(255,255,255,0.25)';
+          ctx.fillText(LABELS[zid], c * TILE + TILE/2, r * TILE + TILE/2);
+        }
+      }
+    }
+  }
+}
+
+function drawAgents() {
+  agents.forEach(a => {
+    const px = a.x * TILE;
+    const py = a.y * TILE;
+    const r  = selectedAgent && selectedAgent.id === a.id ? 6 : 4;
+
+    // glow for selected
+    if (selectedAgent && selectedAgent.id === a.id) {
+      ctx.beginPath();
+      ctx.arc(px, py, 9, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(255,255,255,0.15)';
+      ctx.fill();
+    }
+
+    ctx.beginPath();
+    ctx.arc(px, py, r, 0, Math.PI * 2);
+    ctx.fillStyle = a.color;
+    ctx.fill();
+
+    // outline
+    ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+    ctx.lineWidth = 0.8;
+    ctx.stroke();
+  });
+}
+
+// ─── Animation loop ───────────────────────────────────
+function loop(ts) {
+  if (!running) return;
+  const dt = ts - lastFrame;
+  lastFrame = ts;
+  accumulator += dt;
+
+  const tickMs = MS_PER_TICK / simSpeed;
+  while (accumulator >= tickMs) {
+    tickSim();
+    accumulator -= tickMs;
+  }
+  renderFrame();
+  animId = requestAnimationFrame(loop);
+}
+
+// ─── Controls ─────────────────────────────────────────
+document.getElementById('btnToggle').addEventListener('click', () => {
+  running = !running;
+  document.getElementById('btnToggle').textContent = running ? '⏸ Pause' : '▶ Run';
+  if (running) {
+    lastFrame = performance.now();
+    accumulator = 0;
+    animId = requestAnimationFrame(loop);
+  } else {
+    cancelAnimationFrame(animId);
+  }
+});
+
+document.getElementById('btnReset').addEventListener('click', () => {
+  running = false;
+  cancelAnimationFrame(animId);
+  document.getElementById('btnToggle').textContent = '▶ Run';
+  initSim();
+});
+
+// Parameter sliders
+document.getElementById('paramPop').addEventListener('input', function() {
+  document.getElementById('paramPopVal').textContent = this.value;
+});
+document.getElementById('paramWork').addEventListener('input', function() {
+  document.getElementById('paramWorkVal').textContent = this.value + '%';
+  workRate = parseInt(this.value);
+});
+document.getElementById('paramSpeed').addEventListener('input', function() {
+  simSpeed = parseInt(this.value);
+  document.getElementById('paramSpeedVal').textContent = simSpeed + '×';
+  document.getElementById('speedLabel').textContent    = simSpeed + '×';
+});
+document.getElementById('paramTime').addEventListener('input', function() {
+  simHour = parseInt(this.value);
+  document.getElementById('paramTimeVal').textContent = String(simHour).padStart(2,'0') + ':00';
+});
+
+// ─── Agent click inspection ───────────────────────────
+canvas.addEventListener('click', (e) => {
+  if (editMode) return;
+  const rect = canvas.getBoundingClientRect();
+  const mx = (e.clientX - rect.left) / (rect.width  / canvas.width);
+  const my = (e.clientY - rect.top)  / (rect.height / canvas.height);
+
+  let closest = null;
+  let minDist  = Infinity;
+
+  agents.forEach(a => {
+    const px = a.x * TILE;
+    const py = a.y * TILE;
+    const d  = Math.hypot(px - mx, py - my);
+    if (d < minDist) { minDist = d; closest = a; }
+  });
+
+  if (closest && minDist < 14) {
+    selectedAgent = closest;
+    const box = document.getElementById('agentInfoBox');
+    const zoneName = (() => {
+      const tx = Math.floor(closest.x);
+      const ty = Math.floor(closest.y);
+      if (tx < 0 || ty < 0 || tx >= COLS || ty >= ROWS) return '?';
+      return ZONE_LIST[liveMap[ty][tx]]?.label || '?';
+    })();
+    box.innerHTML =
+      `<span>${closest.name}</span><br>` +
+      `Age group: ${closest.age}<br>` +
+      `State: <span>${closest.state}</span><br>` +
+      `Zone: ${zoneName}<br>` +
+      `Health: ${closest.health}%<br>` +
+      `Happiness: ${closest.happiness}%<br>` +
+      `Income: ${closest.income}`;
+  } else {
+    selectedAgent = null;
+    document.getElementById('agentInfoBox').textContent = 'Click an agent on the map to inspect it.';
+  }
+  renderFrame();
+});
+
+// ─── Edit mode ───────────────────────────────────────
+let editMode = false;
+let selectedBrush = 0;
+let isPainting = false;
+let hoverTile = null;
+
+document.getElementById('btnEdit').addEventListener('click', () => {
+  editMode = !editMode;
+  const btn = document.getElementById('btnEdit');
+  btn.classList.toggle('active', editMode);
+  btn.textContent = editMode ? '✕ Exit Edit' : '✏ Edit Map';
+  canvas.classList.toggle('edit-mode', editMode);
+  document.getElementById('editHint').style.display = editMode ? 'none' : 'block';
+  if (!editMode) hoverTile = null;
+  renderFrame();
+});
+
+// Brush palette selection
+document.getElementById('brushPalette').addEventListener('click', (e) => {
+  const btn = e.target.closest('.brush-btn');
+  if (!btn) return;
+  document.querySelectorAll('.brush-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  selectedBrush = parseInt(btn.dataset.zid);
+});
+
+function canvasTile(e) {
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = canvas.width  / rect.width;
+  const scaleY = canvas.height / rect.height;
+  const mx = (e.clientX - rect.left) * scaleX;
+  const my = (e.clientY - rect.top)  * scaleY;
+  const c = Math.floor(mx / TILE);
+  const r = Math.floor(my / TILE);
+  if (c < 0 || r < 0 || c >= COLS || r >= ROWS) return null;
+  return { r, c };
+}
+
+function paintTile(tile) {
+  if (!tile) return;
+  if (liveMap[tile.r][tile.c] === selectedBrush) return;
+  liveMap[tile.r][tile.c] = selectedBrush;
+  rebuildZoneTiles();
+}
+
+canvas.addEventListener('mousedown', (e) => {
+  if (!editMode) return;
+  isPainting = true;
+  paintTile(canvasTile(e));
+  renderFrame();
+});
+
+canvas.addEventListener('mousemove', (e) => {
+  if (!editMode) return;
+  hoverTile = canvasTile(e);
+  if (isPainting) paintTile(hoverTile);
+  renderFrame();
+});
+
+canvas.addEventListener('mouseup',   () => { isPainting = false; });
+canvas.addEventListener('mouseleave',() => { isPainting = false; hoverTile = null; if (editMode) renderFrame(); });
+
+// ─── Bootstrap ────────────────────────────────────────
+initSim();
+</script>
+</body>
+</html>
