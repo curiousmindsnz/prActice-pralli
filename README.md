@@ -1,2 +1,14 @@
 # prActice-pralli
-im going to try make an  agent-based modelling thingy cause im bored
+I'm going to try to make an agent-based modelling thing because I'm bored.
+
+## Tiny agent-based modelling demo
+
+This repo now includes a small zero-dependency JavaScript simulation in `agent-based-modelling.js`.
+
+Run it with:
+
+```bash
+node agent-based-modelling.js
+```
+
+It creates a small world, places a few agents at random positions, and simulates several movement steps while printing the history as JSON.
